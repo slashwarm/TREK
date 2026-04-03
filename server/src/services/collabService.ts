@@ -101,7 +101,7 @@ export function formatNote(note: CollabNote) {
   return {
     ...note,
     avatar_url: avatarUrl(note),
-    attachments: attachments.map(a => ({ ...a, url: `/uploads/${a.filename}` })),
+    attachments: attachments.map(a => ({ ...a, url: `/api/trips/${note.trip_id}/files/${a.id}/download` })),
   };
 }
 
@@ -190,7 +190,7 @@ export function addNoteFile(tripId: string | number, noteId: string | number, fi
   ).run(tripId, noteId, `files/${file.filename}`, file.originalname, file.size, file.mimetype);
 
   const saved = db.prepare('SELECT * FROM trip_files WHERE id = ?').get(result.lastInsertRowid) as TripFile;
-  return { file: { ...saved, url: `/uploads/${saved.filename}` } };
+  return { file: { ...saved, url: `/api/trips/${tripId}/files/${saved.id}/download` } };
 }
 
 export function getFormattedNoteById(noteId: string | number) {
@@ -394,7 +394,7 @@ export async function fetchLinkPreview(url: string): Promise<LinkPreviewResult> 
   const fallback: LinkPreviewResult = { title: null, description: null, image: null, url };
 
   const parsed = new URL(url);
-  const ssrf = await checkSsrf(url);
+  const ssrf = await checkSsrf(url, true);
   if (!ssrf.allowed) {
     return { ...fallback, error: ssrf.error } as LinkPreviewResult & { error?: string };
   }
