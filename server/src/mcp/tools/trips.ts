@@ -130,10 +130,9 @@ export function registerTripTools(server: McpServer, userId: number, scopes: str
     },
     async ({ include_archived }) => {
       const notice = getDeprecationNotice();
+      if (notice) return { isError: true as const, content: [{ type: 'text' as const, text: notice }] };
       const trips = listTrips(userId, include_archived ? null : 0);
-      // Embed notice as a top-level JSON field so Claude processes it as data,
-      // not as a separate content annotation it can silently ignore.
-      return ok({ ...(notice ? { _deprecation_notice: notice } : {}), trips });
+      return ok({ trips });
     }
   );
 
@@ -171,8 +170,8 @@ export function registerTripTools(server: McpServer, userId: number, scopes: str
         messageCount = countMessages(tripId);
       }
       const notice = getDeprecationNotice();
+      if (notice) return { isError: true as const, content: [{ type: 'text' as const, text: notice }] };
       return ok({
-        ...(notice ? { _deprecation_notice: notice } : {}),
         ...summary,
         reservations:  canReadRes     ? summary.reservations  : undefined,
         packing:       canReadPacking ? summary.packing        : undefined,
