@@ -92,11 +92,11 @@ describe('ReservationsPanel', () => {
   });
 
   it('FE-COMP-RES-010: shows reservations title and cards', () => {
-    const r1 = buildReservation({ title: 'Flight', type: 'flight', status: 'confirmed' });
-    const r2 = buildReservation({ title: 'Hotel', type: 'hotel', status: 'pending' });
+    const r1 = buildReservation({ title: 'My Flight Booking', type: 'flight', status: 'confirmed' });
+    const r2 = buildReservation({ title: 'Grand Hotel', type: 'hotel', status: 'pending' });
     render(<ReservationsPanel {...defaultProps} reservations={[r1, r2]} />);
-    expect(screen.getByText('Flight')).toBeInTheDocument();
-    expect(screen.getByText('Hotel')).toBeInTheDocument();
+    expect(screen.getByText('My Flight Booking')).toBeInTheDocument();
+    expect(screen.getByText('Grand Hotel')).toBeInTheDocument();
   });
 
   it('FE-COMP-RES-011: hotel reservation renders', () => {
