@@ -127,22 +127,22 @@ const geoJsonWithFR = {
   ],
 };
 
-const geoJsonWithFranceA3Fallback = {
+const makeGeoJsonWithA3Fallback = (a3: string, name: string) => ({
   type: 'FeatureCollection',
   features: [
     {
       type: 'Feature',
       properties: {
         ISO_A2: '-99',
-        ADM0_A3: 'FRA',
-        ISO_A3: 'FRA',
-        NAME: 'France',
-        ADMIN: 'France',
+        ADM0_A3: a3,
+        ISO_A3: a3,
+        NAME: name,
+        ADMIN: name,
       },
       geometry: null,
     },
   ],
-};
+});
 
 // ── Atlas API response fixture ────────────────────────────────────────────────
 const atlasStatsResponse = {
@@ -1341,11 +1341,14 @@ describe('AtlasPage', () => {
   });
 
   describe('FE-PAGE-ATLAS-041: country search falls back from A3 when ISO_A2 is invalid', () => {
-    it('returns France in search results when GeoJSON provides ADM0_A3 but ISO_A2 is -99', async () => {
+    it.each([
+      { a3: 'FRA', name: 'France', query: 'france' },
+      { a3: 'NOR', name: 'Norway', query: 'norway' },
+    ])('returns $name in search results when GeoJSON provides ADM0_A3=$a3 but ISO_A2 is -99', async ({ a3, name, query }) => {
       vi.spyOn(global, 'fetch').mockImplementation((url) => {
         const urlStr = String(url);
         if (urlStr.includes('geojson') || urlStr.includes('githubusercontent')) {
-          return Promise.resolve({ ok: true, json: () => Promise.resolve(geoJsonWithFranceA3Fallback) } as Response);
+          return Promise.resolve({ ok: true, json: () => Promise.resolve(makeGeoJsonWithA3Fallback(a3, name)) } as Response);
         }
         return Promise.reject(new Error(`Unmocked fetch: ${urlStr}`));
       });
@@ -1358,11 +1361,11 @@ describe('AtlasPage', () => {
       });
 
       const searchInput = screen.getByPlaceholderText(/search a country/i);
-      await user.type(searchInput, 'france');
+      await user.type(searchInput, query);
 
       await waitFor(() => {
-        const franceButton = screen.getAllByRole('button').find((button) => button.textContent?.includes('France'));
-        expect(franceButton).toBeTruthy();
+        const countryButton = screen.getAllByRole('button').find((button) => button.textContent?.includes(name));
+        expect(countryButton).toBeTruthy();
       });
     });
   });
