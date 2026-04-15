@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Settings2 } from 'lucide-react'
 import { adminApi } from '../../api/client'
 import { useTranslation } from '../../i18n'
 import { useToast } from '../shared/Toast'
 import Section from '../Settings/Section'
 import CustomSelect from '../shared/CustomSelect'
+import { MapView } from '../Map/MapView'
+import type { Place } from '../../types'
 
 const MAP_PRESETS = [
   { name: 'OpenStreetMap', url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png' },
@@ -119,6 +121,32 @@ export default function DefaultUserSettingsTab(): React.ReactElement {
       </button>
     ) : null
 
+  const mapPreviewPlaces = useMemo((): Place[] => [{
+    id: 1,
+    trip_id: 1,
+    name: 'Preview center',
+    description: null,
+    notes: null,
+    lat: 48.8566,
+    lng: 2.3522,
+    address: null,
+    category_id: null,
+    icon: null,
+    price: null,
+    currency: null,
+    image_url: null,
+    google_place_id: null,
+    osm_id: null,
+    route_geometry: null,
+    place_time: null,
+    end_time: null,
+    duration_minutes: null,
+    transport_mode: null,
+    website: null,
+    phone: null,
+    created_at: Date(),
+  }], [])
+
   if (!loaded) {
     return <p style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic', padding: 16 }}>Loading…</p>
   }
@@ -220,28 +248,42 @@ export default function DefaultUserSettingsTab(): React.ReactElement {
         </label>
         <CustomSelect
           value={mapTileUrl}
-          onChange={(value: string) => { if (value) setMapTileUrl(value) }}
+          onChange={(value: string) => { if (value) { setMapTileUrl(value); save({ map_tile_url: value }) } }}
           placeholder={t('settings.mapTemplatePlaceholder.select')}
           options={MAP_PRESETS.map(p => ({ value: p.url, label: p.name }))}
           size="sm"
           style={{ marginBottom: 8 }}
         />
-        <div className="flex gap-2 items-center">
-          <input
-            type="text"
-            value={mapTileUrl}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMapTileUrl(e.target.value)}
-            placeholder="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 focus:border-transparent"
-          />
-          <button
-            onClick={() => save({ map_tile_url: mapTileUrl })}
-            className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm hover:bg-slate-700 whitespace-nowrap"
-          >
-            {t('common.save')}
-          </button>
-        </div>
+        <input
+          type="text"
+          value={mapTileUrl}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMapTileUrl(e.target.value)}
+          onBlur={() => save({ map_tile_url: mapTileUrl })}
+          placeholder="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-slate-400 focus:border-transparent"
+        />
         <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>{t('settings.mapDefaultHint')}</p>
+        <div style={{ position: 'relative', height: '200px', width: '100%', marginTop: 12 }}>
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {React.createElement(MapView as any, {
+            places: mapPreviewPlaces,
+            dayPlaces: [],
+            route: null,
+            routeSegments: null,
+            selectedPlaceId: null,
+            onMarkerClick: null,
+            onMapClick: null,
+            onMapContextMenu: null,
+            center: [48.8566, 2.3522],
+            zoom: 10,
+            tileUrl: mapTileUrl,
+            fitKey: null,
+            dayOrderMap: [],
+            leftWidth: 0,
+            rightWidth: 0,
+            hasInspector: false,
+          })}
+        </div>
       </div>
     </Section>
   )
