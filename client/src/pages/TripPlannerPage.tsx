@@ -246,7 +246,11 @@ export default function TripPlannerPage(): React.ReactElement | null {
 
     return places.filter(p => {
       if (!p.lat || !p.lng) return false
-      if (mapCategoryFilter.size > 0 && !mapCategoryFilter.has(String(p.category_id))) return false
+      if (mapCategoryFilter.size > 0) {
+        if (p.category_id == null) {
+          if (!mapCategoryFilter.has('uncategorized')) return false
+        } else if (!mapCategoryFilter.has(String(p.category_id))) return false
+      }
       if (hiddenPlaceIds.has(p.id)) return false
       if (plannedIds && plannedIds.has(p.id)) return false
       return true
