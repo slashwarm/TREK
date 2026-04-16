@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
-import { createPortal } from 'react-dom'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useJourneyStore } from '../store/journeyStore'
 import { useAuthStore } from '../store/authStore'
@@ -228,16 +227,15 @@ export default function JourneyDetailPage() {
         />
       )}
 
-      {/* Fullscreen entry view (mobile) — portal to body for iOS stacking */}
-      {viewingEntry && createPortal(
+      {/* Fullscreen entry view (mobile) */}
+      {viewingEntry && (
         <MobileEntryView
           entry={viewingEntry}
           onClose={() => setViewingEntry(null)}
           onEdit={() => { setViewingEntry(null); setEditingEntry(viewingEntry); }}
           onDelete={() => { setViewingEntry(null); setDeleteTarget(viewingEntry); }}
           onPhotoClick={(photos, idx) => setLightbox({ photos: photos.map(p => ({ id: p.id, src: photoUrl(p, 'original'), caption: p.caption, provider: p.provider, asset_id: p.asset_id, owner_id: p.owner_id })), index: idx })}
-        />,
-        document.body
+        />
       )}
 
       {/* Floating tab toggle on mobile combined view */}
@@ -580,8 +578,8 @@ export default function JourneyDetailPage() {
         </div>
       </div>
 
-      {/* Entry Editor — portal to body to escape stacking context on iOS */}
-      {editingEntry && createPortal(
+      {/* Entry Editor */}
+      {editingEntry && (
         <EntryEditor
           entry={editingEntry}
           journeyId={current.id}
@@ -605,8 +603,7 @@ export default function JourneyDetailPage() {
             setEditingEntry(null)
             loadJourney(Number(id))
           }}
-        />,
-        document.body
+        />
       )}
 
       {/* Journey Settings */}
@@ -2093,7 +2090,7 @@ function EntryEditor({ entry, journeyId, tripDates, galleryPhotos, onClose, onSa
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end sm:items-center sm:justify-center sm:p-5" style={{ background: 'rgba(9,9,11,0.75)' }}>
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center sm:justify-center sm:p-5" style={{ background: 'rgba(9,9,11,0.75)' }}>
       <div className="bg-white dark:bg-zinc-900 sm:rounded-2xl shadow-[0_20px_40px_rgba(0,0,0,0.2)] sm:max-w-[640px] w-full flex flex-col overflow-hidden h-full sm:h-auto sm:max-h-[90vh]">
 
 
