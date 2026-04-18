@@ -23,6 +23,7 @@ import { useSettingsStore } from '../../store/settingsStore'
 import { useTranslation } from '../../i18n'
 import { formatDate, formatTime, dayTotalCost, currencyDecimals } from '../../utils/formatters'
 import { useDayNotes } from '../../hooks/useDayNotes'
+import Tooltip from '../shared/Tooltip'
 import type { Trip, Day, Place, Category, Assignment, Reservation, AssignmentsMap, RouteResult } from '../../types'
 
 const NOTE_ICONS = [
@@ -1143,9 +1144,10 @@ const DayPlanSidebar = React.memo(function DayPlanSidebar({
                         <Pencil size={15} strokeWidth={1.8} color="var(--text-secondary)" />
                       </button>}
                       {canEditDays && onAddTransport && (
+                        <Tooltip label={t('transport.addTransport')} placement="top">
                         <button
                           onClick={e => { e.stopPropagation(); onAddTransport(day.id) }}
-                          title={t('transport.addTransport')}
+                          aria-label={t('transport.addTransport')}
                           style={{
                             flexShrink: 0,
                             background: 'none',
@@ -1162,6 +1164,7 @@ const DayPlanSidebar = React.memo(function DayPlanSidebar({
                         >
                           <Plus size={15} strokeWidth={1.8} color="var(--text-secondary)" />
                         </button>
+                        </Tooltip>
                       )}
                       {(() => {
                         const dayAccs = accommodations.filter(a => day.id >= a.start_day_id && day.id <= a.end_day_id)
@@ -1217,15 +1220,15 @@ const DayPlanSidebar = React.memo(function DayPlanSidebar({
                   </div>
                 </div>
 
-                {canEditDays && <button
+                {canEditDays && <Tooltip label={t('dayplan.addNote')} placement="top"><button
                   onClick={e => openAddNote(day.id, e)}
-                  title={t('dayplan.addNote')}
+                  aria-label={t('dayplan.addNote')}
                   style={{ flexShrink: 0, background: 'none', border: 'none', padding: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-faint)' }}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--text-primary)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-faint)'}
                 >
                   <FileText size={16} strokeWidth={2} />
-                </button>}
+                </button></Tooltip>}
                 <button
                   onClick={e => toggleDay(day.id, e)}
                   style={{ flexShrink: 0, background: 'none', border: 'none', padding: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-faint)' }}

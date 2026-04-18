@@ -13,6 +13,7 @@ import { useCanDo } from '../../store/permissionsStore'
 import type { Place, Category, Day, AssignmentsMap } from '../../types'
 import FileImportModal from './FileImportModal'
 import ConfirmDialog from '../shared/ConfirmDialog'
+import Tooltip from '../shared/Tooltip'
 
 interface PlacesSidebarProps {
   tripId: number
@@ -372,74 +373,65 @@ const PlacesSidebar = React.memo(function PlacesSidebar({
           >
             <MapPin size={11} strokeWidth={2} /> {t(hasMultipleListImportProviders ? 'places.importList' : 'places.importGoogleList')}
           </button>
-          <button
-            onClick={() => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-              padding: '5px 10px', borderRadius: 8,
-              border: `1px solid ${selectMode ? 'var(--accent)' : 'var(--border-primary)'}`,
-              background: selectMode ? 'color-mix(in srgb, var(--accent) 12%, transparent)' : 'none',
-              color: selectMode ? 'var(--accent)' : 'var(--text-faint)', fontSize: 11, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
-            }}
-          >
-            <Check size={11} strokeWidth={2} /> {t('common.select')}
-          </button>
         </div>
-        {selectMode && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, padding: '6px 8px', borderRadius: 8, background: 'var(--bg-tertiary)', fontSize: 11 }}>
-            <span style={{ flex: 1, color: 'var(--text-muted)', fontWeight: 500 }}>
-              {t('places.selectionCount', { count: selectedIds.size })}
-            </span>
-            <button
-              onClick={() => {
-                if (selectedIds.size === filtered.length) {
-                  setSelectedIds(new Set())
-                } else {
-                  setSelectedIds(new Set(filtered.map(p => p.id)))
-                }
-              }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 11, fontFamily: 'inherit', padding: '2px 4px', borderRadius: 4 }}
-            >
-              {selectedIds.size === filtered.length && filtered.length > 0 ? t('common.deselectAll') : t('common.selectAll')}
-            </button>
-            <button
-              onClick={() => {
-                if (selectedIds.size === 0) return
-                if (isMobile) {
-                  setPendingDeleteIds(Array.from(selectedIds))
-                } else {
-                  onBulkDeletePlaces?.(Array.from(selectedIds))
-                }
-              }}
-              disabled={selectedIds.size === 0}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none',
-                cursor: selectedIds.size > 0 ? 'pointer' : 'default',
-                color: selectedIds.size > 0 ? '#ef4444' : 'var(--text-faint)',
-                fontSize: 11, fontFamily: 'inherit', padding: '2px 4px', borderRadius: 4, fontWeight: 500,
-              }}
-            >
-              <Trash2 size={11} strokeWidth={2} /> {t('places.deleteSelected')}
-            </button>
-            <button onClick={exitSelectMode} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 2 }}>
-              <X size={12} strokeWidth={2} color="var(--text-faint)" />
-            </button>
-          </div>
-        )}
         </>}
 
         {/* Filter-Tabs */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
-          {([{ id: 'all', label: t('places.all') }, { id: 'unplanned', label: t('places.unplanned') }, hasTracks ? { id: 'tracks', label: t('places.filterTracks') } : null] as const).filter(Boolean).map(f => (
-            <button key={f.id} onClick={() => { setFilter(f.id); onPlacesFilterChange?.(f.id); setSelectedIds(new Set()) }} style={{
-              padding: '4px 10px', borderRadius: 20, border: 'none', cursor: 'pointer',
-              fontSize: 11, fontWeight: 500, fontFamily: 'inherit',
-              background: filter === f.id ? 'var(--accent)' : 'var(--bg-tertiary)',
-              color: filter === f.id ? 'var(--accent-text)' : 'var(--text-muted)',
-            }}>{f.label}</button>
-          ))}
-        </div>
+        {(() => {
+          const baseFiltered = places.filter(p => {
+            if (categoryFilters.size > 0) {
+              if (p.category_id == null) {
+                if (!categoryFilters.has('uncategorized')) return false
+              } else if (!categoryFilters.has(String(p.category_id))) return false
+            }
+            if (search && !p.name.toLowerCase().includes(search.toLowerCase()) &&
+                !(p.address || '').toLowerCase().includes(search.toLowerCase())) return false
+            return true
+          })
+          const counts = {
+            all: baseFiltered.length,
+            unplanned: baseFiltered.filter(p => !plannedIds.has(p.id)).length,
+            tracks: baseFiltered.filter(p => p.route_geometry).length,
+          }
+          const tabs = ([
+            { id: 'all', label: t('places.all') },
+            { id: 'unplanned', label: t('places.unplanned') },
+            hasTracks ? { id: 'tracks', label: t('places.filterTracks') } : null,
+          ] as const).filter(Boolean) as Array<{ id: 'all' | 'unplanned' | 'tracks'; label: string }>
+          return (
+            <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
+              {tabs.map(f => {
+                const active = filter === f.id
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => { setFilter(f.id); onPlacesFilterChange?.(f.id); setSelectedIds(new Set()) }}
+                    style={{
+                      appearance: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '4px 9px', borderRadius: 99,
+                      fontSize: 11, fontWeight: 500, whiteSpace: 'nowrap',
+                      background: active ? 'var(--accent)' : 'var(--bg-card)',
+                      color: active ? 'var(--accent-text)' : 'var(--text-primary)',
+                      boxShadow: active ? 'none' : '0 1px 2px rgba(0,0,0,0.06)',
+                      transition: 'background 0.15s, color 0.15s, box-shadow 0.15s',
+                    }}
+                  >
+                    {f.label}
+                    <span style={{
+                      fontSize: 9, fontWeight: 600, lineHeight: 1,
+                      background: active ? 'color-mix(in srgb, var(--accent-text) 22%, transparent)' : 'var(--bg-tertiary)',
+                      color: active ? 'var(--accent-text)' : 'var(--text-faint)',
+                      padding: '1px 5px', borderRadius: 99, minWidth: 14, textAlign: 'center',
+                    }}>
+                      {counts[f.id]}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )
+        })()}
 
         {/* Suchfeld */}
         <div style={{ position: 'relative' }}>
@@ -470,9 +462,9 @@ const PlacesSidebar = React.memo(function PlacesSidebar({
               ? (categoryFilters.has('uncategorized') ? t('places.noCategory') : categories.find(c => categoryFilters.has(String(c.id)))?.name || t('places.allCategories'))
               : `${categoryFilters.size} ${t('places.categoriesSelected')}`
           return (
-            <div style={{ marginTop: 6, position: 'relative' }}>
+            <div style={{ marginTop: 6, position: 'relative', display: 'flex', gap: 6, alignItems: 'stretch' }}>
               <button onClick={() => setCatDropOpen(v => !v)} style={{
-                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border-primary)',
                 background: 'var(--bg-card)', fontSize: 12, color: 'var(--text-primary)',
                 cursor: 'pointer', fontFamily: 'inherit',
@@ -480,6 +472,41 @@ const PlacesSidebar = React.memo(function PlacesSidebar({
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</span>
                 <ChevronDown size={12} style={{ flexShrink: 0, color: 'var(--text-faint)', transform: catDropOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
               </button>
+              {canEditPlaces && (
+                <Tooltip label={t('common.select')} placement="bottom">
+                <button
+                  onClick={() => { setSelectMode(v => !v); setSelectedIds(new Set()) }}
+                  aria-label={t('common.select')}
+                  aria-pressed={selectMode}
+                  style={{
+                    position: 'relative', width: 30, flexShrink: 0, borderRadius: 8,
+                    border: `1px solid ${selectMode ? 'var(--accent)' : 'var(--border-primary)'}`,
+                    background: selectMode ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'var(--bg-card)',
+                    color: selectMode ? 'var(--accent)' : 'var(--text-faint)',
+                    cursor: 'pointer', fontFamily: 'inherit', padding: 0,
+                    transition: 'background 0.18s, color 0.18s, border-color 0.18s',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <span style={{
+                    position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'opacity 0.18s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    opacity: selectMode ? 0 : 1,
+                    transform: selectMode ? 'rotate(-90deg) scale(0.6)' : 'rotate(0) scale(1)',
+                  }}>
+                    <Check size={13} strokeWidth={2.4} />
+                  </span>
+                  <span style={{
+                    position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'opacity 0.18s ease, transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    opacity: selectMode ? 1 : 0,
+                    transform: selectMode ? 'rotate(0) scale(1)' : 'rotate(90deg) scale(0.6)',
+                  }}>
+                    <X size={13} strokeWidth={2.4} />
+                  </span>
+                </button>
+                </Tooltip>
+              )}
               {catDropOpen && (
                 <div style={{
                   position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, marginTop: 4,
@@ -550,10 +577,62 @@ const PlacesSidebar = React.memo(function PlacesSidebar({
         })()}
       </div>
 
-      {/* Anzahl */}
-      <div style={{ padding: '6px 16px', flexShrink: 0 }}>
-        <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{filtered.length === 1 ? t('places.countSingular') : t('places.count', { count: filtered.length })}</span>
-      </div>
+      {/* Anzahl / Auswahl-Leiste */}
+      {selectMode ? (
+        <div style={{
+          margin: '6px 16px', padding: '5px 8px 5px 10px', borderRadius: 8,
+          background: 'color-mix(in srgb, var(--accent) 10%, transparent)',
+          display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, fontSize: 11,
+        }}>
+          <span style={{ flex: 1, color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {t('places.selectionCount', { count: selectedIds.size })}
+          </span>
+          <Tooltip label={selectedIds.size === filtered.length && filtered.length > 0 ? t('common.deselectAll') : t('common.selectAll')} placement="bottom">
+          <button
+            onClick={() => {
+              if (selectedIds.size === filtered.length) setSelectedIds(new Set())
+              else setSelectedIds(new Set(filtered.map(p => p.id)))
+            }}
+            aria-label={selectedIds.size === filtered.length && filtered.length > 0 ? t('common.deselectAll') : t('common.selectAll')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 24, height: 24, borderRadius: 6, border: 'none',
+              background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', padding: 0,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+          >
+            <Check size={13} strokeWidth={2.2} />
+          </button>
+          </Tooltip>
+          <Tooltip label={t('places.deleteSelected')} placement="bottom">
+          <button
+            onClick={() => {
+              if (selectedIds.size === 0) return
+              if (isMobile) setPendingDeleteIds(Array.from(selectedIds))
+              else onBulkDeletePlaces?.(Array.from(selectedIds))
+            }}
+            disabled={selectedIds.size === 0}
+            aria-label={t('places.deleteSelected')}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 24, height: 24, borderRadius: 6, border: 'none',
+              background: 'transparent',
+              color: selectedIds.size > 0 ? '#ef4444' : 'var(--text-faint)',
+              cursor: selectedIds.size > 0 ? 'pointer' : 'default', padding: 0,
+            }}
+            onMouseEnter={e => { if (selectedIds.size > 0) e.currentTarget.style.background = 'color-mix(in srgb, #ef4444 14%, transparent)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+          >
+            <Trash2 size={13} strokeWidth={2} />
+          </button>
+          </Tooltip>
+        </div>
+      ) : (
+        <div style={{ padding: '6px 16px', flexShrink: 0 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>{filtered.length === 1 ? t('places.countSingular') : t('places.count', { count: filtered.length })}</span>
+        </div>
+      )}
 
       {/* Liste */}
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>

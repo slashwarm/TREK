@@ -932,7 +932,7 @@ const de: Record<string, string | { name: string; category: string }[]> = {
 
   // Places Sidebar
   'places.addPlace': 'Ort/Aktivität hinzufügen',
-  'places.importFile': 'Datei importieren',
+  'places.importFile': 'Dateimport',
   'places.sidebarDrop': 'Ablegen zum Importieren',
   'places.importFileHint': '.gpx-, .kml- oder .kmz-Dateien aus Tools wie Google My Maps, Google Earth oder einem GPS-Tracker importieren.',
   'places.importFileDropHere': 'Datei auswählen oder hierher ziehen und ablegen',
