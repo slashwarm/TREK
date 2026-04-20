@@ -344,7 +344,7 @@ function createTables(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS day_accommodations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       trip_id INTEGER NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
-      place_id INTEGER NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+      place_id INTEGER REFERENCES places(id) ON DELETE SET NULL,
       start_day_id INTEGER NOT NULL REFERENCES days(id) ON DELETE CASCADE,
       end_day_id INTEGER NOT NULL REFERENCES days(id) ON DELETE CASCADE,
       check_in TEXT,

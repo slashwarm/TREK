@@ -149,10 +149,10 @@ export function createReservation(tripId: string | number, data: CreateReservati
   let resolvedAccommodationId: number | null = accommodation_id || null;
   if (type === 'hotel' && !resolvedAccommodationId && create_accommodation) {
     const { place_id: accPlaceId, start_day_id, end_day_id, check_in, check_out, confirmation: accConf } = create_accommodation;
-    if (accPlaceId && start_day_id && end_day_id) {
+    if (start_day_id && end_day_id) {
       const accResult = db.prepare(
         'INSERT INTO day_accommodations (trip_id, place_id, start_day_id, end_day_id, check_in, check_out, confirmation) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      ).run(tripId, accPlaceId, start_day_id, end_day_id, check_in || null, check_out || null, accConf || confirmation_number || null);
+      ).run(tripId, accPlaceId || null, start_day_id, end_day_id, check_in || null, check_out || null, accConf || confirmation_number || null);
       resolvedAccommodationId = Number(accResult.lastInsertRowid);
       accommodationCreated = true;
     }
@@ -274,11 +274,16 @@ export function updateReservation(id: string | number, tripId: string | number, 
   }
   if (type === 'hotel' && create_accommodation) {
     const { place_id: accPlaceId, start_day_id, end_day_id, check_in, check_out, confirmation: accConf } = create_accommodation;
-    if (accPlaceId && start_day_id && end_day_id) {
+    if (start_day_id && end_day_id) {
       if (resolvedAccId) {
-        db.prepare('UPDATE day_accommodations SET place_id = ?, start_day_id = ?, end_day_id = ?, check_in = ?, check_out = ?, confirmation = ? WHERE id = ?')
-          .run(accPlaceId, start_day_id, end_day_id, check_in || null, check_out || null, accConf || confirmation_number || null, resolvedAccId);
-      } else {
+        if (accPlaceId) {
+          db.prepare('UPDATE day_accommodations SET place_id = ?, start_day_id = ?, end_day_id = ?, check_in = ?, check_out = ?, confirmation = ? WHERE id = ?')
+            .run(accPlaceId, start_day_id, end_day_id, check_in || null, check_out || null, accConf || confirmation_number || null, resolvedAccId);
+        } else {
+          db.prepare('UPDATE day_accommodations SET start_day_id = ?, end_day_id = ?, check_in = ?, check_out = ?, confirmation = ? WHERE id = ?')
+            .run(start_day_id, end_day_id, check_in || null, check_out || null, accConf || confirmation_number || null, resolvedAccId);
+        }
+      } else if (accPlaceId) {
         const accResult = db.prepare(
           'INSERT INTO day_accommodations (trip_id, place_id, start_day_id, end_day_id, check_in, check_out, confirmation) VALUES (?, ?, ?, ?, ?, ?, ?)'
         ).run(tripId, accPlaceId, start_day_id, end_day_id, check_in || null, check_out || null, accConf || confirmation_number || null);

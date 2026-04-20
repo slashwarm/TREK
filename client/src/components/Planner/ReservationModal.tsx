@@ -143,6 +143,18 @@ export function ReservationModal({ isOpen, onClose, onSave, reservation, days, p
     }
   }, [reservation, isOpen, selectedDayId, defaultAssignmentId])
 
+  // Re-hydrate hotel day range when the accommodations prop arrives after the modal opens
+  // (race: tripAccommodations fetch may complete after isOpen fires, leaving hotel fields empty)
+  useEffect(() => {
+    if (!isOpen || !reservation || reservation.type !== 'hotel' || !reservation.accommodation_id) return
+    const acc = accommodations.find(a => a.id == reservation.accommodation_id)
+    if (!acc) return
+    setForm(prev => {
+      if (prev.hotel_place_id !== '' || prev.hotel_start_day !== '' || prev.hotel_end_day !== '') return prev
+      return { ...prev, hotel_place_id: acc.place_id, hotel_start_day: acc.start_day_id, hotel_end_day: acc.end_day_id }
+    })
+  }, [accommodations, isOpen, reservation])
+
   const set = (field, value) => setForm(prev => ({ ...prev, [field]: value }))
 
   const isEndBeforeStart = (() => {
@@ -193,9 +205,9 @@ export function ReservationModal({ isOpen, onClose, onSave, reservation, days, p
           ? { total_price: parseFloat(form.price), category: form.budget_category || t(`reservations.type.${form.type}`) || 'Other' }
           : { total_price: 0 }
       }
-      if (form.type === 'hotel' && form.hotel_place_id && form.hotel_start_day && form.hotel_end_day) {
+      if (form.type === 'hotel' && form.hotel_start_day && form.hotel_end_day) {
         saveData.create_accommodation = {
-          place_id: form.hotel_place_id,
+          place_id: form.hotel_place_id || null,
           start_day_id: form.hotel_start_day,
           end_day_id: form.hotel_end_day,
           check_in: form.meta_check_in_time || null,

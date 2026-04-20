@@ -166,7 +166,7 @@ export function deleteDay(id: string | number) {
 export interface DayAccommodation {
   id: number;
   trip_id: number;
-  place_id: number;
+  place_id: number | null;
   start_day_id: number;
   end_day_id: number;
   check_in: string | null;
@@ -180,7 +180,7 @@ function getAccommodationWithPlace(id: number | bigint) {
   return db.prepare(`
     SELECT a.*, p.name as place_name, p.address as place_address, p.image_url as place_image, p.lat as place_lat, p.lng as place_lng
     FROM day_accommodations a
-    JOIN places p ON a.place_id = p.id
+    LEFT JOIN places p ON a.place_id = p.id
     WHERE a.id = ?
   `).get(id);
 }
@@ -191,9 +191,11 @@ function getAccommodationWithPlace(id: number | bigint) {
 
 export function listAccommodations(tripId: string | number) {
   return db.prepare(`
-    SELECT a.*, p.name as place_name, p.address as place_address, p.image_url as place_image, p.lat as place_lat, p.lng as place_lng
+    SELECT a.*, p.name as place_name, p.address as place_address, p.image_url as place_image, p.lat as place_lat, p.lng as place_lng,
+           r.title as reservation_title
     FROM day_accommodations a
-    JOIN places p ON a.place_id = p.id
+    LEFT JOIN places p ON a.place_id = p.id
+    LEFT JOIN reservations r ON r.accommodation_id = a.id
     WHERE a.trip_id = ?
     ORDER BY a.created_at ASC
   `).all(tripId);

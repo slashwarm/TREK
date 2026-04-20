@@ -1235,9 +1235,9 @@ const DayPlanSidebar = React.memo(function DayPlanSidebar({
                           const border = isCheckOut && !isCheckIn ? 'rgba(239,68,68,0.2)' : isCheckIn ? 'rgba(34,197,94,0.2)' : 'var(--border-primary)'
                           const iconColor = isCheckOut && !isCheckIn ? '#ef4444' : isCheckIn ? '#22c55e' : 'var(--text-muted)'
                           return (
-                            <span key={acc.id} onClick={e => { e.stopPropagation(); onPlaceClick(acc.place_id) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 5, background: bg, border: `1px solid ${border}`, flexShrink: 1, minWidth: 0, maxWidth: '40%', cursor: 'pointer' }}>
+                            <span key={acc.id} onClick={e => { e.stopPropagation(); if ((acc as any).place_id) onPlaceClick((acc as any).place_id) }} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 5, background: bg, border: `1px solid ${border}`, flexShrink: 1, minWidth: 0, maxWidth: '40%', cursor: (acc as any).place_id ? 'pointer' : 'default' }}>
                               <Hotel size={8} style={{ color: iconColor, flexShrink: 0 }} />
-                              <span style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.place_name}</span>
+                              <span style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(acc as any).place_name || (acc as any).reservation_title}</span>
                             </span>
                           )
                         })

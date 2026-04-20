@@ -35,15 +35,6 @@ function initDb(): void {
 
 initDb();
 
-if (process.env.DEMO_MODE === 'true') {
-  try {
-    const { seedDemoData } = require('../demo/demo-seed');
-    seedDemoData(_db);
-  } catch (err: unknown) {
-    console.error('[Demo] Seed error:', err instanceof Error ? err.message : err);
-  }
-}
-
 const db = new Proxy({} as Database.Database, {
   get(_, prop: string | symbol) {
     if (!_db) throw new Error('Database connection is not available (restore in progress?)');
@@ -55,6 +46,15 @@ const db = new Proxy({} as Database.Database, {
     return true;
   },
 });
+
+if (process.env.DEMO_MODE === 'true') {
+  try {
+    const { seedDemoData } = require('../demo/demo-seed');
+    seedDemoData(_db);
+  } catch (err: unknown) {
+    console.error('[Demo] Seed error:', err instanceof Error ? err.message : err);
+  }
+}
 
 function closeDb(): void {
   if (_db) {
