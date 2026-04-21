@@ -1,5 +1,24 @@
 # Troubleshooting
 
+## "Access token required" when changing password on first login
+
+**Cause:** The session cookie has the `Secure` flag set, which means the browser will only send it over HTTPS. When accessing TREK over plain HTTP (e.g. `http://192.168.1.x:3000`), the browser silently drops the cookie and the server sees no session — returning "Access token required".
+
+**Fix:** Choose one of the following options:
+
+**Option 1 — Use HTTPS.** Access TREK via HTTPS with a valid SSL certificate.
+
+**Option 2 — Disable the Secure flag.** Set `COOKIE_SECURE=false` in your Docker environment to allow the session cookie to be sent over plain HTTP:
+
+```yaml
+environment:
+  - COOKIE_SECURE=false
+```
+
+> **Note:** Option 2 is only recommended for internal/home-lab deployments that do not use HTTPS. Do not use it on a publicly accessible instance. See [Environment Variables](Environment-Variables).
+
+---
+
 ## WebSocket not connecting / real-time sync broken
 
 **Cause:** Your reverse proxy is not forwarding WebSocket upgrade headers on the `/ws` path.
@@ -82,4 +101,136 @@ Add this to the `location /` block (or the specific backup route). See [Reverse 
 
 ```bash
 sudo chown -R 1000:1000 ./data ./uploads
+```
+
+---
+
+## Encryption key regenerated on restart — stored secrets stop working
+
+**Cause:** On every startup, TREK resolves its encryption key in this order: (1) `ENCRYPTION_KEY` env var, (2) `data/.encryption_key` file, (3) legacy `data/.jwt_secret` fallback, (4) auto-generate a fresh key. If neither the env var nor the `data/` volume is persisted — for example after recreating a container without a volume mount — a new random key is generated and all stored secrets (SMTP password, OIDC client secret, API keys, MFA TOTP seeds) become unrecoverable.
+
+**Fix:** Ensure `./data:/app/data` is mounted as a persistent volume so `data/.encryption_key` survives restarts. Alternatively, pin the key explicitly:
+
+```yaml
+environment:
+  - ENCRYPTION_KEY=<your-key>
+```
+
+See [Encryption Key Rotation](Encryption-Key-Rotation) for how to retrieve or rotate the key.
+
+---
+
+## OIDC login returns "APP_URL is not configured"
+
+**Cause:** When OIDC is enabled, TREK needs to know its own public URL to build the redirect URI. It resolves this from (1) `APP_URL` env var, (2) the first entry in `ALLOWED_ORIGINS`, (3) `http://localhost:<PORT>` as a last resort. If none of these are set and the request is not coming from localhost, TREK returns a 500 error.
+
+**Fix:** Set `APP_URL` to the public URL of your instance:
+
+```yaml
+environment:
+  - APP_URL=https://trek.example.com
+```
+
+---
+
+## OIDC login fails with issuer mismatch
+
+**Cause:** TREK validates that the `issuer` field in the provider's discovery document exactly matches the configured `OIDC_ISSUER`. A trailing-slash difference (e.g. `https://auth.example.com` vs `https://auth.example.com/`) is enough to fail.
+
+**Fix:** Check the exact issuer value your provider advertises and match it:
+
+```bash
+curl -s https://<your-oidc-issuer>/.well-known/openid-configuration | jq .issuer
+```
+
+Set `OIDC_ISSUER` to that exact string.
+
+---
+
+## OIDC login fails when provider is on a private/internal network
+
+**Cause:** TREK's SSRF guard blocks outbound requests to private IP ranges by default. If your OIDC provider (e.g. Keycloak, Authentik) is running on an internal address, the discovery document fetch will be blocked with: `Requests to private/internal network addresses are not allowed.`
+
+**Fix:**
+
+```yaml
+environment:
+  - ALLOW_INTERNAL_NETWORK=true
+```
+
+---
+
+## Password reset emails are not delivered / SMTP is silent
+
+**Cause:** SMTP failures are logged but do not surface as errors to the end user — the "reset email sent" message appears regardless. Common causes: wrong `SMTP_HOST` or `SMTP_PORT`, bad credentials, firewall blocking outbound on the SMTP port, or a self-signed certificate on the SMTP server.
+
+**Fix:**
+
+1. Check server logs for `Email send failed`:
+   ```bash
+   docker logs <container> 2>&1 | grep "Email send failed"
+   ```
+2. If the error mentions TLS or certificate, set `SMTP_SKIP_TLS_VERIFY=true`.
+3. Verify the port: `587` for STARTTLS, `465` for implicit TLS, `25` for plain SMTP.
+4. Test connectivity from the container:
+   ```bash
+   docker exec <container> nc -zv <SMTP_HOST> <SMTP_PORT>
+   ```
+
+> **Note:** If no SMTP is configured at all, TREK prints the reset link directly to the server logs (`===== PASSWORD RESET LINK =====`). This is useful for initial setup or self-hosted installs without email.
+
+---
+
+## CORS error — API requests blocked in the browser
+
+**Cause:** If `ALLOWED_ORIGINS` is set, only those origins are permitted. Any request from a different origin is rejected with a CORS error visible in the browser console.
+
+**Fix:** Add your origin to the comma-separated list:
+
+```yaml
+environment:
+  - ALLOWED_ORIGINS=https://trek.example.com,https://other.example.com
+```
+
+If `ALLOWED_ORIGINS` is not set, TREK allows all origins (development default). See [Environment Variables](Environment-Variables).
+
+---
+
+## WebSocket closes immediately after connecting (codes 4001 / 4403)
+
+**Cause:** The `/ws` endpoint requires an ephemeral token generated by the client immediately before connecting. If the token is missing, expired, or the user's session state changed, the server closes the connection with a specific code:
+
+| Code | Reason |
+|------|--------|
+| `4001` | No token, expired/invalid token, or user not found — re-login required |
+| `4403` | MFA is required globally but the user has not enabled it |
+
+**Fix:**
+
+- Code `4001`: Log out and log back in. If it persists, check that your reverse proxy is not stripping the `token` query parameter from the WebSocket upgrade request.
+- Code `4403`: The user must enable MFA in **Settings > Security**, or an admin can disable the global MFA requirement in **Admin > Settings**.
+
+---
+
+## Clipboard features not working (copy link, share, etc.)
+
+**Cause:** The browser Clipboard API (`navigator.clipboard`) is only available in a [secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts). When accessing TREK over plain HTTP on a non-localhost address, the API is unavailable and clipboard operations silently fail or show an error.
+
+**Fix:** The only supported options are:
+
+- Access TREK over HTTPS with a valid SSL certificate.
+- Access TREK directly from `http://localhost:<port>` — browsers treat `localhost` as a secure context for the Clipboard API (unlike the session cookie, which always requires HTTPS regardless of hostname).
+
+---
+
+## MCP integration: "Too many requests" or "Session limit reached"
+
+**Cause:** Each user is limited to 300 MCP requests per minute and 20 concurrent sessions by default. Exceeding either limit returns a `429` response.
+
+**Fix:** Increase the limits via environment variables:
+
+```yaml
+environment:
+  - MCP_RATE_LIMIT=600          # requests per minute per user (default: 300)
+  - MCP_MAX_SESSION_PER_USER=50 # concurrent sessions per user (default: 20)
 ```
